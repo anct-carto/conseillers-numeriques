@@ -35,15 +35,15 @@ let search_group_template = {
             <div id="search-bar-container">
                 <div id = "search-type-group">
                     <span id="search-type-text">Rechercher par :</span>
-                    <div class="btn-group btn-group-toggle" id="search-type-radio" data-toggle="buttons">
+                    <div class="btn-group btn-group-toggle" id="search-type-radio" data-toggle="buttons" title="Rechercher par adresse, par département ou par région">
+                        <label class="search-type-btn btn btn-outline-primary">
+                            <input type="radio" name="reg" id="reg-btn" @click="onChange($event)">Région
+                        </label>
+                        <label class="search-type-btn btn btn-outline-primary">
+                            <input type="radio" name="dep" id="dep-btn" @click="onChange($event)">Département
+                        </label>
                         <label class="search-type-btn btn btn-outline-primary active">
                             <input type="radio" name="address" id="adresse-btn" @click="onChange($event)" checked>Adresse
-                        </label>
-                        <label class="search-type-btn btn btn-outline-primary">
-                            <input type="radio" name="admin" id="dep-btn" @click="onChange($event)">Département
-                        </label>
-                        <label class="search-type-btn btn btn-outline-primary">
-                            <input type="radio" name="admin" id="reg-btn" @click="onChange($event)">Région
                         </label>
                     </div>
                 </div>
@@ -98,15 +98,18 @@ let search_group_template = {
             index:0,
             suggestionsList:[],
             apiAdresse:"https://api-adresse.data.gouv.fr/search/?q=",
-            apiAdmin:"https://geo.api.gouv.fr/departements?nom=",
+            apiAdminDep:"https://geo.api.gouv.fr/departements?nom=",
+            apiAdminReg:"https://geo.api.gouv.fr/regions?nom=",
         }
     },
     computed: {
         placeholderTag() {
             if(this.searchType == "address") {
                 return "Saisissez une adresse ..."
-            } else {
+            } else if(this.searchType == "dep") {
                 return "Saisissez un nom de département ..."
+            } else if(this.searchType == "reg") {
+                return "Saisissez un nom de région ..."
             }
         }
     },
@@ -116,7 +119,6 @@ let search_group_template = {
                 this.isOpen = !this.isOpen;
                 this.index = 0;
                 this.suggestionsList = [];
-                // this.$emit('searchResult',' ') // reinitialize map
             }
         },
         selectedSearchType() {
@@ -128,6 +130,8 @@ let search_group_template = {
             this.searchType = e.target.name;
             //this.isOpen = !this.isOpen;
             this.inputAdress = '';
+            this.$emit('searchType', this.searchType)
+
         },
         returnType(type) {
             switch (type) {
@@ -165,17 +169,25 @@ let search_group_template = {
                             };
                             this.suggestionsList = suggestions;
                         }).catch(error => console.log(error));
-                } else if(this.searchType == 'admin') {
-                    fetch(this.apiAdmin.concat(val,"&limit=5"))
-                    .then(res => res.json())
-                    .then(res => {
-                        let suggestions = [];
-                        if(res) {
-                            res.forEach(e => {
-                                suggestions.push(e);
-                            });
-                        };
-                        this.suggestionsList = suggestions;
+                } else {
+                    let geoApiurl;
+
+                    if(this.searchType == 'dep') {
+                        geoApiurl = this.apiAdminDep;
+                    } else if(this.searchType == 'reg') {
+                        geoApiurl = this.apiAdminReg;
+                    };
+                    
+                    fetch(geoApiurl.concat(val,"&limit=5"))
+                        .then(res => res.json())
+                        .then(res => {
+                            let suggestions = [];
+                            if(res) {
+                                res.forEach(e => {
+                                    suggestions.push(e);
+                                });
+                            };
+                            this.suggestionsList = suggestions;
                     }).catch(error => console.error(error));
                 }
             }
@@ -210,10 +222,12 @@ let search_group_template = {
                     })
                 } else {
                     this.inputAdress = suggestion.nom;
+                    // send data
                     this.$emit('searchResult', {
-                        resultType:'dep',
+                        resultType:this.searchType,
                         resultCode:suggestion.code
                     });
+
                 }
                 this.suggestionsList = [];
                 this.index = -1;
@@ -237,7 +251,7 @@ let search_group_template = {
                 this.inputAdress = suggestion.nom;
                 // send data
                 this.$emit("searchResult", {
-                    resultType:'dep',
+                    resultType:this.searchType,
                     resultCode:suggestion.code
                 });                
             }
@@ -464,12 +478,26 @@ let cardNumber = {
 
 
 let sliderTemplate = {
-    props:[''],
+    data() {
+        return {
+            radiusVal:10,
+            minVal:0,
+            maxVal:50
+        }
+    },
+    methods: {
+        onChange() {
+            this.$emit('radiusVal',this.radiusVal)
+        }
+    },
     template:`
-        <input type="range" min=0 max=100 style="width:100%" id="slider-distance">
-        <label for="slider-distance"></label>
+        <div>
+            <label for="customRange1" class="form-label">Rayon de recherche : </label>
+            <span id="radius-val">{{ radiusVal }}</span> km
+            <input type="range" class="form-range" v-model="radiusVal" @change="onChange" id="distance-slider" min="0" max="maxVal" step="0.5"style="width:100%">
+        </div>
     `
-}
+};
 
 
 
@@ -509,12 +537,11 @@ let sidebar_template = {
             this.show = true;
             // switch between searchType (adresse ou departement) to display all results or not
             if(this.searchType == 'address') {
-                this.nbResults = 5;
-            } else if (this.searchType == 'dep') {
+                // this.nbResults = 5;
+            } else {
                 this.nbResults = this.fromParent.length;
             };
             this.nbConseillers = this.fromParent.map(e => e.nb_cnfs).reduce((a,b) => a + b, 0);
-            console.log(this.nbConseillers);
         },
         cardToHover(card_id) {
             hoveredCard = card_id;
@@ -547,7 +574,9 @@ let sidebar_template = {
         getSearchResult(result) {
             // emit search result from child to parent (map)
             this.$emit("searchResult",result);
-            this.searchType = result.resultType;
+        },
+        getSearchType(e) {
+            this.searchType = e;
         },
         clearSearch() {
             this.$emit('clearMap');
@@ -564,6 +593,9 @@ let sidebar_template = {
                     }
                 }, .01)
             }, 500);
+        },
+        radiusVal(e) {
+            this.$emit('bufferRadius',e)
         }
     },
     template: ` 
@@ -572,9 +604,9 @@ let sidebar_template = {
             <div class="leaflet-sidebar-tabs">
                 <!-- top aligned tabs -->
                 <ul role="tablist">
-                    <li><a href="#home" role="tab"><i class="las la-home"></i></a></li>
-                    <li><a href="#search-tab" role="tab"><i class="las la-search"></i></a></li>
-                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle"></i></a></li>
+                    <li><a href="#home" role="tab"><i class="las la-home" title="Accueil"></i></a></li>
+                    <li><a href="#search-tab" role="tab"><i class="las la-search" title="Recherche"></i></a></li>
+                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle" title="À propos"></i></a></li>
                 </ul>
                 <!-- bottom aligned tabs -->
                 <!--<ul role="tablist">
@@ -593,7 +625,11 @@ let sidebar_template = {
                     </div>
                     <div class="panel-content">
                         <div class="header-logo">
-                            <h1>logo programme</h1>
+                            <img src="img/logo-rf-conseiller-numerique.svg">
+                        </div><br>
+                        <div style="text-align:center">
+                            <h1>2000</h1>
+                            <p>Postes de conseillers numériques</p>
                         </div>
                         <!--
                         <div class="row">
@@ -601,6 +637,12 @@ let sidebar_template = {
                             <card-number :nb="fsCounter('Antenne')" :category="'Antenne'" text="antennes"></card-number>
                             <card-number :nb="fsCounter('Bus')" :category="'Bus'" text="bus"></card-number>
                         </div>-->
+                        <div>
+                            <p>
+                            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                            </p>
+                        </div>
+                        <button style="width:100%"class="btn btn-outline-primary">Trouver une structure</button> 
                     </div>
                 </div>
                 <div class="leaflet-sidebar-pane" id="search-tab">
@@ -611,8 +653,8 @@ let sidebar_template = {
                         </span>
                     </div>
                     <div>
-                        <search-group @searchResult="getSearchResult" @clearSearch="clearSearch"></search-group>
-                        <slider></slider>
+                        <search-group @searchResult="getSearchResult" @clearSearch="clearSearch" @searchType="getSearchType"></search-group>
+                        <slider @radiusVal="radiusVal" v-if="searchType=='address'"></slider>
                         <div id="search-results-header">
                             <span id="nb-results" v-if="filteredList.length>1">
                                 <b>{{ nbConseillers }}</b> conseillers répartis dans <b>{{ filteredList.length }}</b> structures
@@ -630,13 +672,14 @@ let sidebar_template = {
                                 @hoverOnMap="getHoveredCard">
                             </card>
                         </div>
-                        <div class="show-more-btn">
+                        <p style="text-align:center"v-if="Array.isArray(fromParent) & fromParent.length==0">Aucun résultat ...</p>
+                        <!--<div class="show-more-btn">
                             <button type="button" class="btn btn-link show-more-btn" 
                             v-if="filteredList.length>1 && filteredList.length<20 && searchType=='address'"
                             v-on:click="showMore">
                                     Afficher plus de résultats
                             </button>
-                        </div>
+                        </div>-->
                     </div>
                 </div>
                 <div class="leaflet-sidebar-pane" id="a-propos">
@@ -648,7 +691,7 @@ let sidebar_template = {
                     </h2>
                     <a href="https://agence-cohesion-territoires.gouv.fr" target="_blank"><img src="img/logo_anct.png" width="100%" style = 'padding-bottom: 5%;'></a>
                     <p>
-                        <b>Données :</b> ANCT 
+                        <b>Données :</b> ANCT, Insee - Base Sirene
                     </p>
                     <p>
                         <b>Réalisation :</b>
@@ -681,7 +724,7 @@ let map_template = {
             <div id="mapid" ref="map"></div>
         </div>
     `,
-    props: ['iframe','databis'],
+    props: ['iframe'],
     data() {
         return {
             mapOptions: {
@@ -710,6 +753,8 @@ let map_template = {
             marker: null,
             marker_tooltip: null,
             depFilter:null,
+            regFilter:null,
+            searchRadius:10,
             fs_cards:'',
             sidebar:null,
             map:null,
@@ -834,12 +879,12 @@ let map_template = {
             this.clickedMarkerLayer.clearLayers();
             this.maskLayer.clearLayers();
             this.adressLayer.clearLayers();
-            this.map.flyTo(this.mapOptions.center, this.mapOptions.zoom);
+            this.flyToBoundsWithOffset(new L.GeoJSON(this.geom_reg));
         },
         // custom flyTo function, computing offset when sidebar is open
         flyToBoundsWithOffset(layer) {
             offset = document.querySelector('.leaflet-sidebar-content').getBoundingClientRect().width;
-            this.map.flyToBounds(layer, { paddingTopLeft: [offset, 0] })
+            this.map.flyToBounds(layer, { paddingTopLeft: [offset, 0] });
         },
         // LOAD GEOJSON FILES
         loadGeometries() {
@@ -930,7 +975,7 @@ let map_template = {
                     })
                 },
                 style: {
-                    fillColor: '#ff2d2d',
+                    fillColor: '#3646ff',
                     fillOpacity: .75,
                     weight: 2,
                     color: 'white'
@@ -943,22 +988,22 @@ let map_template = {
                     this.onClickOnPropSymbols(e, insee_id, tooltipContent)
                 })
                 .bindTooltip(e => {
-                    return String(e.feature.properties[tooltipContent]).toUpperCase() +
-                              "<br>" + 
-                              e.feature.properties.nb + 
-                              "<span class='leaflet-tooltip-info'> postes de conseillers<br>numériques validés</span>"
+                    return "<div><div class='leaflet-tooltip-header'>" + String(e.feature.properties[tooltipContent]).toUpperCase() + "</div>" +
+                           "<div class='leaflet-tooltip-body'>" + e.feature.properties.nb  + " postes validés</div></div>"
                 }, this.tooltipOptions);
 
             return proportionnalSymbolsGroup;
         },
-        onClickOnPropSymbols(e, insee_id, tooltipContent) {
+        onClickOnPropSymbols(e, insee_id) {
+            this.sidebar.open("search-tab")
             let propSymbol = e.sourceTarget.feature.properties
             if(insee_id == "insee_dep") {
                 filtre = propSymbol.insee_dep;
+                this.depFilter = filtre;
             } else {
                 filtre = propSymbol.insee_reg;
+                this.regFilter = filtre;
             };
-            this.depFilter = filtre;
         },
         zoomLayerControl() {
             let map = this.map;
@@ -1031,7 +1076,7 @@ let map_template = {
         // MARKER CUSTOMISATION
         getMarkerColor(fs) {
             if(fs.type === "Siège") {
-                return "rgb(41,49,115)"
+                return "#3646ff"
             } else if(fs.type == "Antenne") {
                 return "#5770be"
             } else if(fs.type == "Bus") {
@@ -1077,7 +1122,10 @@ let map_template = {
                     })
                 }).addTo(this.map);
 
-                markerToHover.bindTooltip(fs.raison_sociale, {
+                tooltipContent = "<div><div class='leaflet-tooltip-header'>" + fs.raison_sociale + "</div>" + 
+                                 "<div class='leaflet-tooltip-body'>" + fs.nb_cnfs + " postes validés</div></div>"
+
+                markerToHover.bindTooltip(tooltipContent, {
                     className: this.getTooltipCategory(type),
                     direction:'top',
                     sticky:true,
@@ -1095,13 +1143,60 @@ let map_template = {
             if(e.resultType == "address") {
                 this.marker = e.resultCoords;
                 this.marker_tooltip = e.resultLabel;
-            } else {
+            } else if (e.resultType === 'dep') {
                 this.depFilter = e.resultCode;
-            }
+            } else if (e.resultType === 'reg') {
+                this.regFilter = e.resultCode;
+            };
+        },
+        getPolygonResult(idValue, idColumn, geomFeatures) {
+            // clear address layers (buffer + pin address)
+            this.adressLayer.clearLayers();
+            this.maskLayer.clearLayers();
+            this.fs_cards = '';
+            
+            // filter data with matching departement code and send it to cards
+            this.fs_cards = this.dataset.filter(e => {
+                return e[idColumn] === idValue
+            }).sort((a,b) => {
+                let compare = 0;
+                a.raison_sociale > b.raison_sociale ? compare = 1 : compare = 0;
+                return compare 
+            });
+
+            // purge object from distance property (computed in 'address' search)
+            this.fs_cards.forEach(e => delete e.distance)
+            // draw departement borders
+            let filteredFeature = geomFeatures.features.filter(e => {
+                return e.properties[idColumn] == idValue;
+            });
+
+            mask = L.mask(filteredFeature, {
+                fillColor:'rgba(0,0,0,.25)',
+                color:'red'
+            });
+            this.maskLayer.addLayer(mask);
+            
+            // pan to dep borders
+            featureObject = new L.GeoJSON(filteredFeature);
+            this.flyToBoundsWithOffset(featureObject)
         },
         updateBuffer(new_radius) {
+            console.log(new_radius);
+            this.searchRadius = new_radius;
             if(this.buffer.options.radius) {
-                this.buffer.setRadius(new_radius);
+                this.buffer.setRadius(new_radius*1000);
+                this.fs_cards = this.dataset.filter(e => {
+                    return e.distance <= new_radius
+                }).sort((a,b) => {
+                    if(a.distance > b.distance) {
+                        return 1;
+                    } else if (a.distance < b.distance) {
+                        return -1
+                    } else if (a.distance === b.distance) {
+                        return 0
+                    }
+                });
                 this.flyToBoundsWithOffset(this.buffer);
             }
         },
@@ -1190,14 +1285,15 @@ let map_template = {
             list_points.features.sort((a,b) => {
                 if(a.properties.distance > b.properties.distance) {
                     return 1;
-                } else if (a.properties.distance < b.properties.distance) {
+                } else if(a.properties.distance < b.properties.distance) {
                     return -1
                 } else if(a.properties.distance === b.properties.distance) {
                     return 0
                 }
             });
 
-            let closest_points = list_points.features.slice(0, 20);
+            let closest_points = list_points.features
+                                // .slice(0, 20);
             
             // send ids of found fs to data prop
             closest_fs = [];
@@ -1214,7 +1310,6 @@ let map_template = {
                     }
                 })
             });
-            
             this.fs_cards = closest_fs.sort((a,b) => {
                 if(a.distance > b.distance) {
                     return 1;
@@ -1223,47 +1318,20 @@ let map_template = {
                 } else if (a.distance === b.distance) {
                     return 0
                 }
-            });
+            }).filter(e => {return e.distance <= this.searchRadius});
 
             // create buffer 
-            radius = this.fs_cards[4].distance*1000;
+            radius = this.searchRadius*1000;
             perimetre_recherche = this.buffer.setRadius(radius);
             this.maskLayer.addLayer(perimetre_recherche);
             // pan map view to circle with offset from sidebar
             this.flyToBoundsWithOffset(perimetre_recherche);
         },
         depFilter() {
-            // clear address layers (buffer + pin address)
-            this.adressLayer.clearLayers();
-            this.maskLayer.clearLayers();
-            this.fs_cards = '';
-
-            // filter data with matching departement code and send it to cards
-            this.fs_cards = this.dataset.filter(e => {
-                return e.insee_dep == this.depFilter
-            }).sort((a,b) => {
-                let compare = 0;
-                a.raison_sociale > b.raison_sociale ? compare = 1 : compare = 0;
-                return compare 
-            });
-
-            // purge object from distance property (computed in 'address' search)
-            this.fs_cards.forEach(e => delete e.distance)
-
-            // draw departement borders
-            let filteredFeature = this.geom_dep.features.filter(e => {
-                return e.properties.insee_dep == this.depFilter;
-            });
-
-            mask = L.mask(filteredFeature, {
-                fillColor:'rgba(0,0,0,.25)',
-                color:'red'
-            });
-            this.maskLayer.addLayer(mask);
-            
-            // pan to dep borders
-            featureObject = new L.GeoJSON(filteredFeature);
-            this.flyToBoundsWithOffset(featureObject)
+            this.getPolygonResult(this.depFilter,'insee_dep', this.geom_dep);
+        },
+        regFilter() {
+            this.getPolygonResult(this.regFilter,'insee_reg', this.geom_reg);
         },
     },
     mounted() {

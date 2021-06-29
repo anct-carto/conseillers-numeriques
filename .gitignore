@@ -11,3 +11,4 @@ package-lock.json
 /nodes_modules
 /data_init
 .Rproj.user
+.gitignore
