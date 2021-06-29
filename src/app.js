@@ -517,6 +517,9 @@ let sidebar_template = {
         map() {
             return this.$parent.map;
         },
+        sidebar() {
+            return this.$parent.sidebar;
+        },
         filteredList() {
             return this.fromParent.slice(0, this.nbResults)
         },
@@ -537,7 +540,9 @@ let sidebar_template = {
             } else {
                 this.nbResults = this.fromParent.length;
             };
-            this.nbConseillers = this.fromParent.map(e => e.nb_cnfs).reduce((a,b) => a + b, 0);
+            if(this.fromParent.length) {
+                this.nbConseillers = this.fromParent.map(e => e.nb_cnfs).reduce((a,b) => a + b, 0);
+            };
         },
         cardToHover(card_id) {
             hoveredCard = card_id;
@@ -592,6 +597,9 @@ let sidebar_template = {
         },
         radiusVal(e) {
             this.$emit('bufferRadius',e)
+        },
+        openSearchTab() {
+            this.sidebar.open("search-tab")
         }
     },
     template: ` 
@@ -633,7 +641,10 @@ let sidebar_template = {
                             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
                             </p>
                         </div>
-                        <button style="width:100%"class="btn btn-outline-primary">Trouver une structure</button> 
+                        <button style="width:100%"class="btn btn-outline-primary" @click="openSearchTab">
+                            <i class="las la-search"></i>
+                            Trouver une structure
+                        </button>
                     </div>
                 </div>
                 <div class="leaflet-sidebar-pane" id="search-tab">
@@ -690,7 +701,7 @@ let sidebar_template = {
                     </p>
                     <p><b>Technologies utilisées :</b> Leaflet, Bootstrap, Vue, Turf, Étalab - API Geo / API Adresse </p>
                     <p><b>Géocodage : </b>Étalab - Base adresse nationale (BAN)</p>
-                    <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/france_services" target="_blank">Github</a>.</p>
+                    <p>Le code source de cet outil est disponible sur <a href="https://github.com/anct-carto/conseillers-numeriques" target="_blank">Github</a>.</p>
                 </div>
             </div>
         </div>
