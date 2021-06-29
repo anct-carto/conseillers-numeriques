@@ -34,21 +34,10 @@
     <script src='lib/turf.min.js'></script>
   </head>
   <body>
-    <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-      <!-- <img src="img/logo_FranceServices-01.png" style="width:200px;background-color: white;"> -->
-      <div class="row">
-        <div class="spinner-border" role="status">
-          <p class="sr-only">Loading...</p>
-        </div>
-      </div>
-      <div class="row">
-        <p>Chargement des données en cours ...</p>
-      </div>
-    </div>
     <div id="app">
       <!-- <app></app> -->
-      <!-- <loading-screen></loading-screen> -->
-      <leaflet-map ref="map" :iframe="checkWindowLocation"></leaflet-map>
+      <loading-screen></loading-screen>
+      <leaflet-map ref="map" :iframe="iframe"></leaflet-map>
     </div>
     <!-- chargement script js -->
     <script src= "src/app.js"></script>

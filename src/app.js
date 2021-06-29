@@ -1,25 +1,21 @@
-const loading = document.getElementById("loading");
-// loading.remove();
-
-
-
-
 // ****************************************************************************
 
 
 // Loading screen
 let loadingScreen = {
     template:`
-        <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
-        <!-- <img src="img/logo_FranceServices-01.png" style="width:200px;background-color: white;"> -->
-        <div class="row">
-            <div class="spinner-border" role="status">
-            <p class="sr-only">Loading...</p>
+        <div>
+            <div class="w-100 h-100 d-flex flex-column justify-content-center align-items-center" id = "loading">
+                <img src="img/logo-rf-conseiller-numerique.svg" style="width:300px;background-color: rgba(0,0,0,0); padding:10px">
+                <div class="row">
+                    <div class="spinner-border" role="status">
+                        <p class="sr-only">Loading...</p>
+                    </div>
+                </div>
+                <div class="row">
+                    <p>Chargement des données en cours ...</p>
+                </div>
             </div>
-        </div>
-        <div class="row">
-            <p>Chargement des données en cours ...</p>
-        </div>
         </div>
     `
 };
@@ -608,11 +604,6 @@ let sidebar_template = {
                     <li><a href="#search-tab" role="tab"><i class="las la-search" title="Recherche"></i></a></li>
                     <li><a href="#a-propos" role="tab"><i class="la la-question-circle" title="À propos"></i></a></li>
                 </ul>
-                <!-- bottom aligned tabs -->
-                <!--<ul role="tablist">
-                    <li><a href="#a-propos" role="tab"><i class="la la-question-circle"></i></a></li>
-                    <li><a href="https://github.com/cget-carto/France-services" target="_blank"><i class="la la-github"></i></a></li>
-                </ul>-->
             </div>
             <!-- panel content -->
             <div class="leaflet-sidebar-content">
@@ -1344,7 +1335,6 @@ let map_template = {
         //     this.data = session_data;
         //     fs_tab_fetched = session_data;
         // };
-        loading.remove();
         this.initMap();
         this.checkPageStatus();
         this.loadGeometries();
@@ -1408,17 +1398,34 @@ let vm = new Vue({
     //     'app': appTemplate
     // },
     components: {
+        'loading-screen': loadingScreen,
         'leaflet-map': map_template,
+    },
+    data() {
+        return {
+            iframe:''
+        }
+    },
+    mounted() {
+        this.checkWindowLocation();
+        fetch('data/cnfs.json')
+            .then(res=>res.json())
+            .then(res => {
+                if(res) {
+                    setTimeout(() => {
+                        console.log(this.$children[0].$el);
+                        this.$children[0].$el.remove()
+                    }, 500);
+                }
+            })
     },
     methods: {
         // check loading mode : window vs iframe
         checkWindowLocation(ifTrue, ifFalse) {
             if (window.location === window.parent.location) {
-                // console.log("iframe : False")
-                return ifTrue;
+                this.iframe=false;
             } else {
-                console.log("iframe : true")
-                return ifFalse;
+                this.iframe=false;
             };
         },
 

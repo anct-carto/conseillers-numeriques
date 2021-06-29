@@ -240,6 +240,8 @@ ul {
 
 
 .leaflet-tooltip-result {
+	padding:5px;
+	top:-20px;
 	font-family: 'Abel-Regular' !important;
 	text-align: center;
 	font-weight: 900 !important;
