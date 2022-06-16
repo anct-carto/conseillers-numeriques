@@ -1,3 +1,2 @@
 # conseillers-numeriques
-
--- En cours de développement 
+Annuaire cartographique des conseillers numériques France services -- Projet abandonné
